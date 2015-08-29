@@ -37,7 +37,7 @@ func TestGet(t *testing.T) {
 
 		value, err := db.Get(record[0])
 		require.NoError(t, err, msg)
-		assert.Equal(t, record[1], value, msg)
+		assert.Equal(t, string(record[1]), string(value), msg)
 	}
 }
 

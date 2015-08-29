@@ -13,18 +13,18 @@ import (
 	"os"
 )
 
-const headerSize = 256 * 8
+const indexSize = 256 * 8
 
 // CDB represents an open CDB database. It can only be used for reads; to
 // create a database, use Writer.
 type CDB struct {
 	reader io.ReaderAt
-	index index
+	index  index
 }
 
 type table struct {
-	position uint32
-	length   uint32
+	offset uint32
+	length uint32
 }
 
 type index [256]table
@@ -66,8 +66,8 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 	slot := (hash >> 8) % table.length
 
 	for {
-		slotOffset := table.position + (8 * slot)
-		slotHash, offset, err := cdb.readTuple(slotOffset)
+		slotOffset := table.offset + (8 * slot)
+		slotHash, offset, err := readTuple(cdb.reader, slotOffset)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +100,7 @@ func (cdb *CDB) Close() error {
 }
 
 func (cdb *CDB) readIndex() error {
-	buf := make([]byte, headerSize)
+	buf := make([]byte, indexSize)
 	_, err := cdb.reader.ReadAt(buf, 0)
 	if err != nil {
 		return err
@@ -108,16 +108,17 @@ func (cdb *CDB) readIndex() error {
 
 	for i := 0; i < 256; i++ {
 		off := i * 8
-		position := binary.LittleEndian.Uint32(buf[off : off+4])
-		length := binary.LittleEndian.Uint32(buf[off+4 : off+8])
-		cdb.index[i] = table{position: position, length: length}
+		cdb.index[i] = table{
+			offset: binary.LittleEndian.Uint32(buf[off : off+4]),
+			length: binary.LittleEndian.Uint32(buf[off+4 : off+8]),
+		}
 	}
 
 	return nil
 }
 
 func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
-	keyLength, valueLength, err := cdb.readTuple(offset)
+	keyLength, valueLength, err := readTuple(cdb.reader, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +140,4 @@ func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
 	}
 
 	return buf[keyLength:], nil
-}
-
-func (cdb *CDB) readTuple(offset uint32) (uint32, uint32, error) {
-	buf := make([]byte, 8)
-	_, err := cdb.reader.ReadAt(buf, int64(offset))
-	if err != nil {
-		return 0, 0, err
-	}
-
-	first := binary.LittleEndian.Uint32(buf[:4])
-	second := binary.LittleEndian.Uint32(buf[4:])
-	return first, second, nil
 }
