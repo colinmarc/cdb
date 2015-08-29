@@ -1,7 +1,7 @@
 CDB
 ===
 
-[![GoDoc](https://godoc.org/github.com/colinmarc/cdb/web?status.svg)](https://godoc.org/github.com/colinmarc/hdfs) [![build](https://travis-ci.org/colinmarc/cdb.svg?branch=master)](https://travis-ci.org/colinmarc/hdfs)
+[![GoDoc](https://godoc.org/github.com/colinmarc/cdb/web?status.svg)](https://godoc.org/github.com/colinmarc/cdb) [![build](https://travis-ci.org/colinmarc/cdb.svg?branch=master)](https://travis-ci.org/colinmarc/hdfs)
 
 This is a native Go implementation of [cdb][1], a constant key/value database
 with some very nice properties. From the [design doc][1]:
