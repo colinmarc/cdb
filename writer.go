@@ -55,7 +55,7 @@ func NewWriter(writer io.WriteSeeker) (*Writer, error) {
 
 	return &Writer{
 		writer: writer,
-		bufferedWriter: bufio.NewWriter(writer),
+		bufferedWriter: bufio.NewWriterSize(writer, 65536),
 		bufferedOffset: indexSize,
 	}, nil
 }
