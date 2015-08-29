@@ -6,7 +6,7 @@ CDB
 This native Go implementation of [cdb][1], a constant key/value database with
 some very nice properties.
 
-[1]: http://cr.yp.to/cdb.html.
+[1]: http://cr.yp.to/cdb.html
 
 Usage
 -----
@@ -34,6 +34,6 @@ if err != nil {
   log.Fatal(err)
 }
 
-fmt.Println(string(v))
-// Practice
+log.Println(string(v))
+// => Practice
 ```
