@@ -16,7 +16,7 @@ import (
 // CDB represents an open CDB database. It can only be used for reads; to
 // create a database, use Writer.
 type CDB struct {
-	file   *os.File
+	reader io.ReaderAt
 	tables [256]table
 }
 
@@ -32,8 +32,14 @@ func Open(path string) (*CDB, error) {
 		return nil, err
 	}
 
-	cdb := &CDB{file: f}
-	err = cdb.readIndex()
+	return New(f)
+}
+
+// New opens a new CDB instance for the given io.ReaderAt. It can only be used
+// for reads; to create a database, use Writer.
+func New(reader io.ReaderAt) (*CDB, error) {
+	cdb := &CDB{reader: reader}
+	err := cdb.readIndex()
 	if err != nil {
 		return nil, err
 	}
@@ -57,12 +63,7 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 
 	for {
 		slotOffset := table.position + (8 * slot)
-		_, err := cdb.file.Seek(int64(slotOffset), os.SEEK_SET)
-		if err != nil {
-			return nil, err
-		}
-
-		slotHash, offset, err := cdb.readTuple()
+		slotHash, offset, err := cdb.readTuple(slotOffset)
 		if err != nil {
 			return nil, err
 		}
@@ -85,10 +86,19 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 	return nil, nil
 }
 
+// Close closes the database to further reads.
+func (cdb *CDB) Close() error {
+	if closer, ok := cdb.reader.(io.Closer); ok {
+		return closer.Close()
+	} else {
+		return nil
+	}
+}
+
 func (cdb *CDB) readIndex() error {
 	headerLength := 256 * 8
 	buf := make([]byte, headerLength)
-	_, err := io.ReadFull(cdb.file, buf)
+	_, err := cdb.reader.ReadAt(buf, 0)
 	if err != nil {
 		return err
 	}
@@ -104,12 +114,7 @@ func (cdb *CDB) readIndex() error {
 }
 
 func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
-	_, err := cdb.file.Seek(int64(offset), os.SEEK_SET)
-	if err != nil {
-		return nil, err
-	}
-
-	keyLength, valueLength, err := cdb.readTuple()
+	keyLength, valueLength, err := cdb.readTuple(offset)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +125,7 @@ func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
 	}
 
 	buf := make([]byte, keyLength+valueLength)
-	_, err = io.ReadFull(cdb.file, buf)
+	_, err = cdb.reader.ReadAt(buf, int64(offset+8))
 	if err != nil {
 		return nil, err
 	}
@@ -133,9 +138,9 @@ func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
 	return buf[keyLength:], nil
 }
 
-func (cdb *CDB) readTuple() (uint32, uint32, error) {
+func (cdb *CDB) readTuple(offset uint32) (uint32, uint32, error) {
 	buf := make([]byte, 8)
-	_, err := io.ReadFull(cdb.file, buf)
+	_, err := cdb.reader.ReadAt(buf, int64(offset))
 	if err != nil {
 		return 0, 0, err
 	}

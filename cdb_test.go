@@ -2,6 +2,8 @@ package cdb
 
 import (
 	"math/rand"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -37,6 +39,21 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err, msg)
 		assert.Equal(t, record[1], value, msg)
 	}
+}
+
+func TestClosesFile(t *testing.T) {
+	f, err := os.Open("./test/test.cdb")
+	require.NoError(t, err)
+
+	db, err := New(f)
+	require.NoError(t, err)
+	require.NotNil(t, db)
+
+	err = db.Close()
+	require.NoError(t, err)
+
+	err = f.Close()
+	assert.Equal(t, syscall.EINVAL, err)
 }
 
 func BenchmarkGet(b *testing.B) {
