@@ -63,7 +63,8 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 	}
 
 	// Probe the given hash table, starting at the given slot.
-	slot := (hash >> 8) % table.length
+	startingSlot := (hash >> 8) % table.length
+	slot := startingSlot
 
 	for {
 		slotOffset := table.offset + (8 * slot)
@@ -85,6 +86,9 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 		}
 
 		slot = (slot + 1) % table.length
+		if (slot == startingSlot) {
+			break
+		}
 	}
 
 	return nil, nil

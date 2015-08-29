@@ -8,6 +8,7 @@ import (
 	"testing"
 	"testing/quick"
 	"time"
+	"strconv"
 
 	"github.com/Pallinder/go-randomdata"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestWritesReadable(t *testing.T) {
 
 	expected := make([][][]byte, 0, 100)
 	for i := 0; i < cap(expected); i++ {
-		key := []byte(string(i))
+		key := []byte(strconv.Itoa(i))
 		value := []byte(randomdata.SillyName())
 		err := writer.Put(key, value)
 		require.NoError(t, err)

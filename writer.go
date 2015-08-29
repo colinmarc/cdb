@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"bufio"
 )
 
 const maxUint32 = int64(^uint32(0))
@@ -18,6 +19,9 @@ type Writer struct {
 	writer       io.WriteSeeker
 	entries      [256][]entry
 	finalizeOnce sync.Once
+
+	bufferedWriter *bufio.Writer
+	bufferedOffset int64
 }
 
 type entry struct {
@@ -49,39 +53,43 @@ func NewWriter(writer io.WriteSeeker) (*Writer, error) {
 		return nil, err
 	}
 
-	return &Writer{writer: writer}, nil
+	return &Writer{
+		writer: writer,
+		bufferedWriter: bufio.NewWriter(writer),
+		bufferedOffset: indexSize,
+	}, nil
 }
 
-// Put adds a key/value pair to the database.
+// Put adds a key/value pair to the database. If the amount of data written
+// would exceed the limit, Put returns ErrTooMuchData.
 func (cdb *Writer) Put(key, value []byte) error {
-	off, err := cdb.writer.Seek(0, os.SEEK_CUR)
-	if err != nil {
-		return err
-	}
-
-	if off > maxUint32 {
-		return ErrTooMuchData
-	}
-
-	digest := newCDBHash()
+	// Record the entry in the hash table, to be written out at the end.
+  digest := newCDBHash()
 	digest.Write(key)
 	hash := digest.Sum32()
 	table := hash & 0xff
-	cdb.entries[table] = append(cdb.entries[table], entry{hash: hash, offset: uint32(off)})
+	entry := entry{hash: hash, offset: uint32(cdb.bufferedOffset)}
+	cdb.entries[table] = append(cdb.entries[table], entry)
 
-	err = writeTuple(cdb.writer, uint32(len(key)), uint32(len(value)))
+	// Write the key length, then value length, then key, then value.
+	err := writeTuple(cdb.bufferedWriter, uint32(len(key)), uint32(len(value)))
 	if err != nil {
 		return err
 	}
 
-	_, err = cdb.writer.Write(key)
+	_, err = cdb.bufferedWriter.Write(key)
 	if err != nil {
 		return err
 	}
 
-	_, err = cdb.writer.Write(value)
+	_, err = cdb.bufferedWriter.Write(value)
 	if err != nil {
 		return err
+	}
+
+	cdb.bufferedOffset += int64(8 + len(key) + len(value))
+	if cdb.bufferedOffset > maxUint32 {
+		return ErrTooMuchData
 	}
 
 	return nil
@@ -136,27 +144,34 @@ func (cdb *Writer) finalize() (index, error) {
 
 	// Write the hashtables out, one by one, at the end of the file.
 	for i := 0; i < 256; i++ {
-		off, err := cdb.writer.Seek(0, os.SEEK_CUR)
-		if err != nil {
-			return index, err
-		}
-
-		if off > maxUint32 {
-			return index, ErrTooMuchData
-		}
-
 		tableEntries := cdb.entries[i]
-		index[i] = table{offset: uint32(off), length: uint32(len(tableEntries))}
+		index[i] = table{
+			offset: uint32(cdb.bufferedOffset),
+			length: uint32(len(tableEntries)),
+		}
+
 		for _, entry := range tableEntries {
-			err := writeTuple(cdb.writer, entry.hash, entry.offset)
+			err := writeTuple(cdb.bufferedWriter, entry.hash, entry.offset)
 			if err != nil {
 				return index, err
+			}
+
+			cdb.bufferedOffset += 8
+			if cdb.bufferedOffset > maxUint32 {
+				return index, ErrTooMuchData
 			}
 		}
 	}
 
-	// Then, seek to the beginning of the file and write out the index.
-	_, err := cdb.writer.Seek(0, os.SEEK_SET)
+	// We're done with the buffer.
+	err := cdb.bufferedWriter.Flush()
+	cdb.bufferedWriter = nil
+	if err != nil {
+		return index, err
+	}
+
+	// Seek to the beginning of the file and write out the index.
+	_, err = cdb.writer.Seek(0, os.SEEK_SET)
 	if err != nil {
 		return index, err
 	}
