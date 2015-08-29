@@ -2,6 +2,7 @@ package cdb_test
 
 import (
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"reflect"
@@ -111,4 +112,20 @@ func BenchmarkPut(b *testing.B) {
 
 		writer.Put(keyBytes, valueBytes)
 	}
+}
+
+func ExampleWriter() {
+	writer, err := cdb.Create("/tmp/example.cdb")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Write some key/value pairs to the database.
+	writer.Put([]byte("Alice"), []byte("Practice"))
+	writer.Put([]byte("Bob"), []byte("Hope"))
+	writer.Put([]byte("Charlie"), []byte("Horse"))
+
+	// It's important to call Close or Freeze when you're finished writing
+	// records.
+	writer.Close()
 }

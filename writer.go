@@ -13,8 +13,10 @@ const maxUint32 = int64(^uint32(0))
 
 var ErrTooMuchData = errors.New("CDB files are limited to 4GB of data")
 
-// Writer lets you write out a CDB database record by record. The database
-// is not complete until Close or Freeze is called.
+// Writer provides an API for creating a  CDB database record by record.
+//
+// Close or Freeze must be called to finalize the database, or the resulting
+// file will be invalid.
 type Writer struct {
 	writer       io.WriteSeeker
 	entries      [256][]entry

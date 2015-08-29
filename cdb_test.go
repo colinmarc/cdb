@@ -97,6 +97,22 @@ func Example() {
 	// Output: Practice
 }
 
+func ExampleCDB() {
+	db, err := cdb.Open("./test/test.cdb")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Fetch a value.
+	v, err := db.Get([]byte("foo"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(v))
+	// Output: bar
+}
+
 func shuffle(a [][][]byte) {
 	rand.Seed(time.Now().UnixNano())
 	for i := range a {
