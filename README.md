@@ -3,8 +3,13 @@ CDB
 
 [![GoDoc](https://godoc.org/github.com/colinmarc/cdb/web?status.svg)](https://godoc.org/github.com/colinmarc/hdfs/web) [![build](https://travis-ci.org/colinmarc/cdb.svg?branch=master)](https://travis-ci.org/colinmarc/hdfs)
 
-This native Go implementation of [cdb][1], a constant key/value database with
-some very nice properties.
+This is a native Go implementation of [cdb][1], a constant key/value database
+with some very nice properties. From the [design doc][1]:
+
+> cdb is a fast, reliable, simple package for creating and reading constant databases. Its database structure provides several features:
+> - Fast lookups: A successful lookup in a large database normally takes just two disk accesses. An unsuccessful lookup takes only one.
+> - Low overhead: A database uses 2048 bytes, plus 24 bytes per record, plus the space for keys and data.
+> - No random limits: cdb can handle any database up to 4 gigabytes. There are no other restrictions; records don't even have to fit into memory. Databases are stored in a machine-independent format.
 
 [1]: http://cr.yp.to/cdb.html
 
