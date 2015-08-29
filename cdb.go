@@ -13,17 +13,21 @@ import (
 	"os"
 )
 
+const headerSize = 256 * 8
+
 // CDB represents an open CDB database. It can only be used for reads; to
 // create a database, use Writer.
 type CDB struct {
 	reader io.ReaderAt
-	tables [256]table
+	index index
 }
 
 type table struct {
 	position uint32
 	length   uint32
 }
+
+type index [256]table
 
 // Open opens an existing CDB database at the given path.
 func Open(path string) (*CDB, error) {
@@ -53,7 +57,7 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 	digest.Write(key)
 	hash := digest.Sum32()
 
-	table := cdb.tables[hash&0xff]
+	table := cdb.index[hash&0xff]
 	if table.length == 0 {
 		return nil, nil
 	}
@@ -96,8 +100,7 @@ func (cdb *CDB) Close() error {
 }
 
 func (cdb *CDB) readIndex() error {
-	headerLength := 256 * 8
-	buf := make([]byte, headerLength)
+	buf := make([]byte, headerSize)
 	_, err := cdb.reader.ReadAt(buf, 0)
 	if err != nil {
 		return err
@@ -107,7 +110,7 @@ func (cdb *CDB) readIndex() error {
 		off := i * 8
 		position := binary.LittleEndian.Uint32(buf[off : off+4])
 		length := binary.LittleEndian.Uint32(buf[off+4 : off+8])
-		cdb.tables[i] = table{position: position, length: length}
+		cdb.index[i] = table{position: position, length: length}
 	}
 
 	return nil
