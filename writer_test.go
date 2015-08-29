@@ -5,13 +5,13 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 	"testing/quick"
 	"time"
-	"strconv"
 
-	"github.com/colinmarc/cdb"
 	"github.com/Pallinder/go-randomdata"
+	"github.com/colinmarc/cdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

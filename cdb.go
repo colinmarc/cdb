@@ -86,7 +86,7 @@ func (cdb *CDB) Get(key []byte) ([]byte, error) {
 		}
 
 		slot = (slot + 1) % table.length
-		if (slot == startingSlot) {
+		if slot == startingSlot {
 			break
 		}
 	}

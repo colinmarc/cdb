@@ -1,12 +1,12 @@
 package cdb
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"io"
 	"os"
 	"sync"
-	"bufio"
 )
 
 const maxUint32 = int64(^uint32(0))
@@ -54,7 +54,7 @@ func NewWriter(writer io.WriteSeeker) (*Writer, error) {
 	}
 
 	return &Writer{
-		writer: writer,
+		writer:         writer,
 		bufferedWriter: bufio.NewWriterSize(writer, 65536),
 		bufferedOffset: indexSize,
 	}, nil
@@ -64,7 +64,7 @@ func NewWriter(writer io.WriteSeeker) (*Writer, error) {
 // would exceed the limit, Put returns ErrTooMuchData.
 func (cdb *Writer) Put(key, value []byte) error {
 	// Record the entry in the hash table, to be written out at the end.
-  digest := newCDBHash()
+	digest := newCDBHash()
 	digest.Write(key)
 	hash := digest.Sum32()
 	table := hash & 0xff

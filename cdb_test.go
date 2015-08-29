@@ -76,7 +76,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-  // Write some key/value pairs to the database.
+	// Write some key/value pairs to the database.
 	writer.Put([]byte("Alice"), []byte("Practice"))
 	writer.Put([]byte("Bob"), []byte("Hope"))
 	writer.Put([]byte("Charlie"), []byte("Horse"))
@@ -87,7 +87,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-  // Fetch a value.
+	// Fetch a value.
 	v, err := db.Get([]byte("Alice"))
 	if err != nil {
 		log.Fatal(err)
