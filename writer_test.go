@@ -1,4 +1,4 @@
-package cdb
+package cdb_test
 
 import (
 	"io/ioutil"
@@ -10,6 +10,7 @@ import (
 	"time"
 	"strconv"
 
+	"github.com/colinmarc/cdb"
 	"github.com/Pallinder/go-randomdata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestWritesReadable(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	writer, err := NewWriter(f)
+	writer, err := cdb.NewWriter(f)
 	require.NoError(t, err)
 	require.NotNil(t, writer)
 
@@ -50,7 +51,7 @@ func TestWritesRandom(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	writer, err := NewWriter(f)
+	writer, err := cdb.NewWriter(f)
 	require.NoError(t, err)
 	require.NotNil(t, writer)
 
@@ -96,7 +97,7 @@ func BenchmarkPut(b *testing.B) {
 		os.Remove(f.Name())
 	}()
 
-	writer, err := NewWriter(f)
+	writer, err := cdb.NewWriter(f)
 	require.NoError(b, err)
 
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))

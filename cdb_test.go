@@ -1,12 +1,15 @@
-package cdb
+package cdb_test
 
 import (
+	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/colinmarc/cdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +28,7 @@ var expectedRecords = [][][]byte{
 }
 
 func TestGet(t *testing.T) {
-	db, err := Open("./test/test.cdb")
+	db, err := cdb.Open("./test/test.cdb")
 	require.NoError(t, err)
 	require.NotNil(t, db)
 
@@ -45,7 +48,7 @@ func TestClosesFile(t *testing.T) {
 	f, err := os.Open("./test/test.cdb")
 	require.NoError(t, err)
 
-	db, err := New(f)
+	db, err := cdb.New(f)
 	require.NoError(t, err)
 	require.NotNil(t, db)
 
@@ -57,7 +60,7 @@ func TestClosesFile(t *testing.T) {
 }
 
 func BenchmarkGet(b *testing.B) {
-	db, _ := Open("./test/test.cdb")
+	db, _ := cdb.Open("./test/test.cdb")
 	b.ResetTimer()
 
 	rand.Seed(time.Now().UnixNano())
@@ -65,6 +68,33 @@ func BenchmarkGet(b *testing.B) {
 		record := expectedRecords[rand.Intn(len(expectedRecords))]
 		db.Get(record[0])
 	}
+}
+
+func Example() {
+	writer, err := cdb.Create("/tmp/example.cdb")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+  // Write some key/value pairs to the database.
+	writer.Put([]byte("Alice"), []byte("Practice"))
+	writer.Put([]byte("Bob"), []byte("Hope"))
+	writer.Put([]byte("Charlie"), []byte("Horse"))
+
+	// Freeze the database, and open it for reads.
+	db, err := writer.Freeze()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+  // Fetch a value.
+	v, err := db.Get([]byte("Alice"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(v))
+	// Output: Practice
 }
 
 func shuffle(a [][][]byte) {
