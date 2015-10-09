@@ -41,4 +41,14 @@ if err != nil {
 
 log.Println(string(v))
 // => Practice
+
+// Iterate over the database
+iter := db.Iter()
+for iter.Next() {
+    log.Printf("The key %s has a value of length %d\n", string(iter.Key()), len(iter.Value()))
+}
+
+if err := iter.Err(); err != nil {
+    log.Fatal(err)
+}
 ```

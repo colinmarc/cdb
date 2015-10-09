@@ -22,8 +22,8 @@ var expectedRecords = [][][]byte{
 	{[]byte("CRYSTAL"), []byte("castles")},
 	{[]byte("snush"), []byte("collision!")}, // 'playwright' collides with 'snush' in cdbhash
 	{[]byte("a"), []byte("a")},
-	{[]byte(""), []byte("empty_key")},
 	{[]byte("empty_value"), []byte("")},
+	{[]byte(""), []byte("empty_key")},
 	{[]byte("not in the table"), nil},
 }
 
