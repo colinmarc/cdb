@@ -51,36 +51,6 @@ func New(reader io.ReaderAt) (*CDB, error) {
 	return cdb, nil
 }
 
-// Each applies a user defined function for each kv-pair in the database.
-// Execution stops if the function returns an error.
-func (cdb *CDB) Each(eachFunc func(key, value []byte) error) error {
-	// The first record start right after the index
-	pos := uint32(indexSize)
-	// The last record ends right before the hashes
-	endPos := cdb.index[0].offset
-
-	for pos < endPos {
-		keyLength, valueLength, err := readTuple(cdb.reader, pos)
-		if err != nil {
-			return err
-		}
-
-		buf := make([]byte, keyLength+valueLength)
-		_, err = cdb.reader.ReadAt(buf, int64(pos+8))
-		if err != nil {
-			return err
-		}
-
-		if err := eachFunc(buf[:keyLength], buf[keyLength:]); err != nil {
-			return err
-		}
-
-		pos += 8 + keyLength + valueLength
-	}
-
-	return nil
-}
-
 // Get returns the value for a given key, or nil if it can't be found.
 func (cdb *CDB) Get(key []byte) ([]byte, error) {
 	digest := newCDBHash()
