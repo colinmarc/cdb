@@ -22,21 +22,9 @@ var expectedRecords = [][][]byte{
 	{[]byte("CRYSTAL"), []byte("castles")},
 	{[]byte("snush"), []byte("collision!")}, // 'playwright' collides with 'snush' in cdbhash
 	{[]byte("a"), []byte("a")},
-	{[]byte(""), []byte("empty_key")},
 	{[]byte("empty_value"), []byte("")},
+	{[]byte(""), []byte("empty_key")},
 	{[]byte("not in the table"), nil},
-}
-
-var expectedKeyOrder = [][]byte{
-	[]byte("foo"),
-	[]byte("baz"),
-	[]byte("playwright"),
-	[]byte("crystal"),
-	[]byte("CRYSTAL"),
-	[]byte("snush"),
-	[]byte("a"),
-	[]byte("empty_value"),
-	[]byte(""),
 }
 
 func TestGet(t *testing.T) {
@@ -56,23 +44,6 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestEach(t *testing.T) {
-	db, err := cdb.Open("./test/test.cdb")
-	require.NoError(t, err)
-	require.NotNil(t, db)
-
-	n := 0
-	db.Each(func(key, value []byte) error {
-		assert.Equal(t, string(expectedKeyOrder[n]), string(key))
-		n++
-
-		v, err := db.Get(key)
-		require.NoError(t, err)
-		assert.Equal(t, string(value), string(v))
-		return nil
-	})
-}
-
 func TestClosesFile(t *testing.T) {
 	f, err := os.Open("./test/test.cdb")
 	require.NoError(t, err)
@@ -88,6 +59,23 @@ func TestClosesFile(t *testing.T) {
 	assert.Equal(t, syscall.EINVAL, err)
 }
 
+func TestIterator(t *testing.T) {
+	db, err := cdb.Open("./test/test.cdb")
+	require.NoError(t, err)
+	require.NotNil(t, db)
+
+	n := 0
+	iter := db.Iter()
+	for iter.Next() {
+		assert.Equal(t, string(expectedRecords[n][0]), string(iter.Key()))
+		assert.Equal(t, string(expectedRecords[n][1]), string(iter.Value()))
+		require.NoError(t, iter.Err())
+		n++
+	}
+
+	require.NoError(t, iter.Err())
+}
+
 func BenchmarkGet(b *testing.B) {
 	db, _ := cdb.Open("./test/test.cdb")
 	b.ResetTimer()
@@ -96,6 +84,18 @@ func BenchmarkGet(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		record := expectedRecords[rand.Intn(len(expectedRecords))]
 		db.Get(record[0])
+	}
+}
+
+func BenchmarkIterator(b *testing.B) {
+	db, _ := cdb.Open("./test/test.cdb")
+	iter := db.Iter()
+	b.ResetTimer()
+
+	rand.Seed(time.Now().UnixNano())
+	for i := 0; i < b.N; i++ {
+		for iter.Next() {
+		}
 	}
 }
 
