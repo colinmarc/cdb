@@ -59,23 +59,6 @@ func TestClosesFile(t *testing.T) {
 	assert.Equal(t, syscall.EINVAL, err)
 }
 
-func TestIterator(t *testing.T) {
-	db, err := cdb.Open("./test/test.cdb")
-	require.NoError(t, err)
-	require.NotNil(t, db)
-
-	n := 0
-	iter := db.Iter()
-	for iter.Next() {
-		assert.Equal(t, string(expectedRecords[n][0]), string(iter.Key()))
-		assert.Equal(t, string(expectedRecords[n][1]), string(iter.Value()))
-		require.NoError(t, iter.Err())
-		n++
-	}
-
-	require.NoError(t, iter.Err())
-}
-
 func BenchmarkGet(b *testing.B) {
 	db, _ := cdb.Open("./test/test.cdb")
 	b.ResetTimer()
@@ -84,18 +67,6 @@ func BenchmarkGet(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		record := expectedRecords[rand.Intn(len(expectedRecords))]
 		db.Get(record[0])
-	}
-}
-
-func BenchmarkIterator(b *testing.B) {
-	db, _ := cdb.Open("./test/test.cdb")
-	iter := db.Iter()
-	b.ResetTimer()
-
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < b.N; i++ {
-		for iter.Next() {
-		}
 	}
 }
 
