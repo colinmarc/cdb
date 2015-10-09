@@ -27,6 +27,18 @@ var expectedRecords = [][][]byte{
 	{[]byte("not in the table"), nil},
 }
 
+var expectedKeyOrder = [][]byte{
+	[]byte("foo"),
+	[]byte("baz"),
+	[]byte("playwright"),
+	[]byte("crystal"),
+	[]byte("CRYSTAL"),
+	[]byte("snush"),
+	[]byte("a"),
+	[]byte("empty_value"),
+	[]byte(""),
+}
+
 func TestGet(t *testing.T) {
 	db, err := cdb.Open("./test/test.cdb")
 	require.NoError(t, err)
@@ -42,6 +54,23 @@ func TestGet(t *testing.T) {
 		require.NoError(t, err, msg)
 		assert.Equal(t, string(record[1]), string(value), msg)
 	}
+}
+
+func TestEach(t *testing.T) {
+	db, err := cdb.Open("./test/test.cdb")
+	require.NoError(t, err)
+	require.NotNil(t, db)
+
+	n := 0
+	db.Each(func(key, value []byte) error {
+		assert.Equal(t, string(expectedKeyOrder[n]), string(key))
+		n++
+
+		v, err := db.Get(key)
+		require.NoError(t, err)
+		assert.Equal(t, string(value), string(v))
+		return nil
+	})
 }
 
 func TestClosesFile(t *testing.T) {
