@@ -1,7 +1,6 @@
 package cdb
 
-// Iterator represents an iterator over a CDB database. It is used to sequentially
-// iterate over all kv-pairs in the database.
+// Iterator represents a sequential iterator over a CDB database.
 type Iterator struct {
 	db     *CDB
 	pos    uint32
@@ -20,11 +19,10 @@ func (cdb *CDB) Iter() *Iterator {
 	}
 }
 
-// Next reads the next key-value pair and advances the iterator one record.
-// If Next returns true it successfully updated the current key/value
-// and has more records to iterate over.
-// If Next returns false it either encountered an error (can be read through Err())
-// or it has no more records to iterate over.
+// Next reads the next key/value pair and advances the iterator one record.
+// It returns false when the scan stops, either by reaching the end of the
+// database or an error. After Next returns false, the Err method will return
+// any error that occurred while iterating.
 func (iter *Iterator) Next() bool {
 	keyLength, valueLength, err := readTuple(iter.db.reader, iter.pos)
 	if err != nil {
