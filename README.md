@@ -41,4 +41,10 @@ if err != nil {
 
 log.Println(string(v))
 // => Practice
+
+// Iterate over the database
+db.Each(func(key, value []byte) error {
+    log.Printf("The key %s has a value of length %d\n", key, len(value))
+    return nil
+})
 ```
