@@ -42,7 +42,7 @@ func (iter *Iterator) Next() bool {
 	iter.value = buf[keyLength:]
 	iter.pos += 8 + keyLength + valueLength
 
-	return iter.pos < iter.endPos
+	return iter.pos <= iter.endPos
 }
 
 // Key returns the current key.
