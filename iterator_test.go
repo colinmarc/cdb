@@ -25,6 +25,8 @@ func TestIterator(t *testing.T) {
 		n++
 	}
 
+	assert.Equal(t, len(expectedRecords)-1, n)
+
 	require.NoError(t, iter.Err())
 }
 
