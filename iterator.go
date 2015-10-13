@@ -24,6 +24,10 @@ func (cdb *CDB) Iter() *Iterator {
 // database or an error. After Next returns false, the Err method will return
 // any error that occurred while iterating.
 func (iter *Iterator) Next() bool {
+	if iter.pos >= iter.endPos {
+		return false
+	}
+
 	keyLength, valueLength, err := readTuple(iter.db.reader, iter.pos)
 	if err != nil {
 		iter.err = err
@@ -42,7 +46,7 @@ func (iter *Iterator) Next() bool {
 	iter.value = buf[keyLength:]
 	iter.pos += 8 + keyLength + valueLength
 
-	return iter.pos <= iter.endPos
+	return true
 }
 
 // Key returns the current key.
