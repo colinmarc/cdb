@@ -13,7 +13,7 @@ const maxUint32 = int64(^uint32(0))
 
 var ErrTooMuchData = errors.New("CDB files are limited to 4GB of data")
 
-// Writer provides an API for creating a  CDB database record by record.
+// Writer provides an API for creating a CDB database record by record.
 //
 // Close or Freeze must be called to finalize the database, or the resulting
 // file will be invalid.
@@ -147,12 +147,28 @@ func (cdb *Writer) finalize() (index, error) {
 	// Write the hashtables out, one by one, at the end of the file.
 	for i := 0; i < 256; i++ {
 		tableEntries := cdb.entries[i]
+		tableSize := uint32(len(tableEntries) << 1)
+
 		index[i] = table{
 			offset: uint32(cdb.bufferedOffset),
-			length: uint32(len(tableEntries)),
+			length: tableSize,
 		}
 
+		sorted := make([]entry, tableSize)
 		for _, entry := range tableEntries {
+			slot := (entry.hash >> 8) % tableSize
+
+			for {
+				if sorted[slot].hash == 0 {
+					sorted[slot] = entry
+					break
+				}
+
+				slot = (slot + 1) % tableSize
+			}
+		}
+
+		for _, entry := range sorted {
 			err := writeTuple(cdb.bufferedWriter, entry.hash, entry.offset)
 			if err != nil {
 				return index, err
