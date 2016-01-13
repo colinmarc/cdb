@@ -6,11 +6,10 @@ import (
 	"errors"
 	"hash"
 	"io"
+	"math"
 	"os"
 	"sync"
 )
-
-const maxUint32 = int64(^uint32(0))
 
 var ErrTooMuchData = errors.New("CDB files are limited to 4GB of data")
 
@@ -24,8 +23,9 @@ type Writer struct {
 	entries      [256][]entry
 	finalizeOnce sync.Once
 
-	bufferedWriter *bufio.Writer
-	bufferedOffset int64
+	bufferedWriter      *bufio.Writer
+	bufferedOffset      int64
+	estimatedFooterSize int64
 }
 
 type entry struct {
@@ -77,11 +77,17 @@ func NewWriter(writer io.WriteSeeker, hasher hash.Hash32) (*Writer, error) {
 // Put adds a key/value pair to the database. If the amount of data written
 // would exceed the limit, Put returns ErrTooMuchData.
 func (cdb *Writer) Put(key, value []byte) error {
+	entrySize := int64(8 + len(key) + len(value))
+	if (cdb.bufferedOffset + entrySize + cdb.estimatedFooterSize + 16) > math.MaxUint32 {
+		return ErrTooMuchData
+	}
+
 	// Record the entry in the hash table, to be written out at the end.
 	cdb.hasher.Reset()
 	cdb.hasher.Write(key)
 	hash := cdb.hasher.Sum32()
 	table := hash & 0xff
+
 	entry := entry{hash: hash, offset: uint32(cdb.bufferedOffset)}
 	cdb.entries[table] = append(cdb.entries[table], entry)
 
@@ -101,11 +107,8 @@ func (cdb *Writer) Put(key, value []byte) error {
 		return err
 	}
 
-	cdb.bufferedOffset += int64(8 + len(key) + len(value))
-	if cdb.bufferedOffset > maxUint32 {
-		return ErrTooMuchData
-	}
-
+	cdb.bufferedOffset += entrySize
+	cdb.estimatedFooterSize += 16
 	return nil
 }
 
@@ -187,7 +190,7 @@ func (cdb *Writer) finalize() (index, error) {
 			}
 
 			cdb.bufferedOffset += 8
-			if cdb.bufferedOffset > maxUint32 {
+			if cdb.bufferedOffset > math.MaxUint32 {
 				return index, ErrTooMuchData
 			}
 		}
