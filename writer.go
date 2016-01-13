@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"hash"
 	"io"
 	"os"
 	"sync"
@@ -18,6 +19,7 @@ var ErrTooMuchData = errors.New("CDB files are limited to 4GB of data")
 // Close or Freeze must be called to finalize the database, or the resulting
 // file will be invalid.
 type Writer struct {
+	hasher       hash.Hash32
 	writer       io.WriteSeeker
 	entries      [256][]entry
 	finalizeOnce sync.Once
@@ -39,11 +41,16 @@ func Create(path string) (*Writer, error) {
 		return nil, err
 	}
 
-	return NewWriter(f)
+	return NewWriter(f, nil)
 }
 
 // NewWriter opens a CDB database for the given io.WriteSeeker.
-func NewWriter(writer io.WriteSeeker) (*Writer, error) {
+//
+// If hasher is nil, it will default to the CDB hash function: with a starting
+// hash of 5381 and then, for each character c:
+//
+//   h = ((h << 5) + h) ^ c
+func NewWriter(writer io.WriteSeeker, hasher hash.Hash32) (*Writer, error) {
 	// Leave 256 * 8 bytes for the index at the head of the file.
 	_, err := writer.Seek(0, os.SEEK_SET)
 	if err != nil {
@@ -55,7 +62,12 @@ func NewWriter(writer io.WriteSeeker) (*Writer, error) {
 		return nil, err
 	}
 
+	if hasher == nil {
+		hasher = newCDBHash()
+	}
+
 	return &Writer{
+		hasher:         hasher,
 		writer:         writer,
 		bufferedWriter: bufio.NewWriterSize(writer, 65536),
 		bufferedOffset: indexSize,
@@ -66,9 +78,9 @@ func NewWriter(writer io.WriteSeeker) (*Writer, error) {
 // would exceed the limit, Put returns ErrTooMuchData.
 func (cdb *Writer) Put(key, value []byte) error {
 	// Record the entry in the hash table, to be written out at the end.
-	digest := newCDBHash()
-	digest.Write(key)
-	hash := digest.Sum32()
+	cdb.hasher.Reset()
+	cdb.hasher.Write(key)
+	hash := cdb.hasher.Sum32()
 	table := hash & 0xff
 	entry := entry{hash: hash, offset: uint32(cdb.bufferedOffset)}
 	cdb.entries[table] = append(cdb.entries[table], entry)
@@ -135,7 +147,7 @@ func (cdb *Writer) Freeze() (*CDB, error) {
 	}
 
 	if readerAt, ok := cdb.writer.(io.ReaderAt); ok {
-		return &CDB{reader: readerAt, index: index}, nil
+		return &CDB{reader: readerAt, index: index, hasher: cdb.hasher}, nil
 	} else {
 		return nil, os.ErrInvalid
 	}

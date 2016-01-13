@@ -48,7 +48,7 @@ func TestClosesFile(t *testing.T) {
 	f, err := os.Open("./test/test.cdb")
 	require.NoError(t, err)
 
-	db, err := cdb.New(f)
+	db, err := cdb.New(f, nil)
 	require.NoError(t, err)
 	require.NotNil(t, db)
 

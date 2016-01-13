@@ -9,16 +9,20 @@ package cdb
 import (
 	"bytes"
 	"encoding/binary"
+	"hash"
 	"io"
 	"os"
 )
 
 const indexSize = 256 * 8
 
+type index [256]table
+
 // CDB represents an open CDB database. It can only be used for reads; to
 // create a database, use Writer.
 type CDB struct {
 	reader io.ReaderAt
+	hasher hash.Hash32
 	index  index
 }
 
@@ -27,8 +31,6 @@ type table struct {
 	length uint32
 }
 
-type index [256]table
-
 // Open opens an existing CDB database at the given path.
 func Open(path string) (*CDB, error) {
 	f, err := os.Open(path)
@@ -36,13 +38,22 @@ func Open(path string) (*CDB, error) {
 		return nil, err
 	}
 
-	return New(f)
+	return New(f, nil)
 }
 
 // New opens a new CDB instance for the given io.ReaderAt. It can only be used
 // for reads; to create a database, use Writer.
-func New(reader io.ReaderAt) (*CDB, error) {
-	cdb := &CDB{reader: reader}
+//
+// If hasher is nil, it will default to the CDB hash function: with a starting
+// hash of 5381 and then, for each character c:
+//
+//   h = ((h << 5) + h) ^ c
+func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
+	if hasher == nil {
+		hasher = newCDBHash()
+	}
+
+	cdb := &CDB{reader: reader, hasher: hasher}
 	err := cdb.readIndex()
 	if err != nil {
 		return nil, err
@@ -53,9 +64,9 @@ func New(reader io.ReaderAt) (*CDB, error) {
 
 // Get returns the value for a given key, or nil if it can't be found.
 func (cdb *CDB) Get(key []byte) ([]byte, error) {
-	digest := newCDBHash()
-	digest.Write(key)
-	hash := digest.Sum32()
+	cdb.hasher.Reset()
+	cdb.hasher.Write(key)
+	hash := cdb.hasher.Sum32()
 
 	table := cdb.index[hash&0xff]
 	if table.length == 0 {
