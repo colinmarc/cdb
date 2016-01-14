@@ -46,10 +46,7 @@ func Create(path string) (*Writer, error) {
 
 // NewWriter opens a CDB database for the given io.WriteSeeker.
 //
-// If hasher is nil, it will default to the CDB hash function: with a starting
-// hash of 5381 and then, for each character c:
-//
-//   h = ((h << 5) + h) ^ c
+// If hasher is nil, it will default to the CDB hash function.
 func NewWriter(writer io.WriteSeeker, hasher hash.Hash32) (*Writer, error) {
 	// Leave 256 * 8 bytes for the index at the head of the file.
 	_, err := writer.Seek(0, os.SEEK_SET)

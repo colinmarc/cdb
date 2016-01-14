@@ -44,10 +44,7 @@ func Open(path string) (*CDB, error) {
 // New opens a new CDB instance for the given io.ReaderAt. It can only be used
 // for reads; to create a database, use Writer.
 //
-// If hasher is nil, it will default to the CDB hash function: with a starting
-// hash of 5381 and then, for each character c:
-//
-//   h = ((h << 5) + h) ^ c
+// If hasher is nil, it will default to the CDB hash function.
 func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
 	if hasher == nil {
 		hasher = newCDBHash()
