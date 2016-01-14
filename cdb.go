@@ -44,7 +44,9 @@ func Open(path string) (*CDB, error) {
 // New opens a new CDB instance for the given io.ReaderAt. It can only be used
 // for reads; to create a database, use Writer.
 //
-// If hasher is nil, it will default to the CDB hash function.
+// If hasher is nil, it will default to the CDB hash function. If a database
+// was created with a particular hash function, that same hash function must be
+// passed to New, or the database will return incorrect results.
 func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
 	if hasher == nil {
 		hasher = newCDBHash()
