@@ -147,7 +147,7 @@ func (cdb *Writer) Freeze() (*CDB, error) {
 	}
 
 	if readerAt, ok := cdb.writer.(io.ReaderAt); ok {
-		return &CDB{reader: readerAt, index: index, hasher: cdb.hasher}, nil
+		return &CDB{reader: readerAt, index: index, hasher: func () (hash.Hash32) { return cdb.hasher }}, nil
 	} else {
 		return nil, os.ErrInvalid
 	}
