@@ -85,6 +85,15 @@ func (cdb *CDB) initialize (hasher func ([]byte) (uint32)) (*CDB, error) {
 // Get returns the value for a given key, or nil if it can't be found.
 func (cdb *CDB) Get(key []byte) ([]byte, error) {
 	hash := cdb.hasher(key)
+	return cdb.GetWithHash(key, hash)
+}
+
+func (cdb *CDB) GetWithCdbHash(key []byte) ([]byte, error) {
+	hash := CDBHashSum32(key)
+	return cdb.GetWithHash(key, hash)
+}
+
+func (cdb *CDB) GetWithHash(key []byte, hash uint32) ([]byte, error) {
 
 	table := cdb.index[hash&0xff]
 	if table.length == 0 {
