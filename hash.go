@@ -15,13 +15,19 @@ func newCDBHash() *cdbHash {
 }
 
 func (h *cdbHash) Write(data []byte) (int, error) {
-	v := h.uint32
+	h.uint32 = CDBHashSum32Update (data, h.uint32)
+	return len(data), nil
+}
+
+func CDBHashSum32(data []byte) (uint32) {
+	return CDBHashSum32Update(data, start)
+}
+
+func CDBHashSum32Update(data []byte, v uint32) (uint32) {
 	for _, b := range data {
 		v = ((v << 5) + v) ^ uint32(b)
 	}
-
-	h.uint32 = v
-	return len(data), nil
+	return v
 }
 
 func (h *cdbHash) Sum(b []byte) []byte {
