@@ -22,6 +22,7 @@ type index [256]table
 // create a database, use Writer.
 type CDB struct {
 	reader io.ReaderAt
+	readerBytes []byte
 	hasher func ([]byte) (uint32)
 	index  index
 }
@@ -53,6 +54,11 @@ func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
 
 func NewFromReaderWithHasher(reader io.ReaderAt, hasher func ([]byte) (uint32)) (*CDB, error) {
 	cdb := &CDB{reader: reader}
+	return cdb.initialize(hasher)
+}
+
+func NewFromBufferWithHasher(buffer []byte, hasher func ([]byte) (uint32)) (*CDB, error) {
+	cdb := &CDB{readerBytes: buffer}
 	return cdb.initialize(hasher)
 }
 
@@ -106,7 +112,7 @@ func (cdb *CDB) GetWithHash(key []byte, hash uint32) ([]byte, error) {
 
 	for {
 		slotOffset := table.offset + (8 * slot)
-		slotHash, offset, err := readTuple(cdb.reader, slotOffset)
+		slotHash, offset, err := cdb.readTuple(slotOffset)
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +140,9 @@ func (cdb *CDB) GetWithHash(key []byte, hash uint32) ([]byte, error) {
 
 // Close closes the database to further reads.
 func (cdb *CDB) Close() error {
+	if cdb.reader == nil {
+		return nil
+	}
 	if closer, ok := cdb.reader.(io.Closer); ok {
 		return closer.Close()
 	} else {
@@ -142,8 +151,8 @@ func (cdb *CDB) Close() error {
 }
 
 func (cdb *CDB) readIndex() error {
-	buf := make([]byte, indexSize)
-	_, err := cdb.reader.ReadAt(buf, 0)
+
+	buf, err := cdb.readAt(0, indexSize)
 	if err != nil {
 		return err
 	}
@@ -160,7 +169,7 @@ func (cdb *CDB) readIndex() error {
 }
 
 func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
-	keyLength, valueLength, err := readTuple(cdb.reader, offset)
+	keyLength, valueLength, err := cdb.readTuple(offset)
 	if err != nil {
 		return nil, err
 	}
@@ -170,8 +179,8 @@ func (cdb *CDB) getValueAt(offset uint32, expectedKey []byte) ([]byte, error) {
 		return nil, nil
 	}
 
-	buf := make([]byte, keyLength+valueLength)
-	_, err = cdb.reader.ReadAt(buf, int64(offset+8))
+	var buf []byte
+	buf, err = cdb.readAt(offset+8, keyLength+valueLength)
 	if err != nil {
 		return nil, err
 	}

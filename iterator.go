@@ -28,14 +28,14 @@ func (iter *Iterator) Next() bool {
 		return false
 	}
 
-	keyLength, valueLength, err := readTuple(iter.db.reader, iter.pos)
+	keyLength, valueLength, err := iter.db.readTuple(iter.pos)
 	if err != nil {
 		iter.err = err
 		return false
 	}
 
-	buf := make([]byte, keyLength+valueLength)
-	_, err = iter.db.reader.ReadAt(buf, int64(iter.pos+8))
+	var buf []byte
+	buf, err = iter.db.readAt(iter.pos+8, keyLength+valueLength)
 	if err != nil {
 		iter.err = err
 		return false
