@@ -47,28 +47,19 @@ func Open(path string) (*CDB, error) {
 // If hasher is nil, it will default to the CDB hash function. If a database
 // was created with a particular hash function, that same hash function must be
 // passed to New, or the database will return incorrect results.
-func NewWithHasher(reader io.ReaderAt, hasher func ([]byte) (uint32)) (*CDB, error) {
-	if hasher == nil {
-		hasher = CDBHashSum32
-	}
-
-	cdb := &CDB{reader: reader, hasher: hasher}
-	err := cdb.readIndex()
-	if err != nil {
-		return nil, err
-	}
-
-	return cdb, nil
+func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
+	return NewFromReaderWithHasher(reader, adaptHash32 (hasher))
 }
 
-func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
-	return NewWithHasher(reader, adaptHash32 (hasher))
+func NewFromReaderWithHasher(reader io.ReaderAt, hasher func ([]byte) (uint32)) (*CDB, error) {
+	cdb := &CDB{reader: reader}
+	return cdb.initialize(hasher)
 }
 
 func adaptHash32(hasher hash.Hash32) (func ([]byte) (uint32)) {
 	var hasherFunc func ([]byte) (uint32)
 	if hasher == nil {
-		hasherFunc = CDBHashSum32
+		hasherFunc = nil
 	} else {
 		hasherFunc = func (data []byte) (uint32) {
 			hasher.Reset()
@@ -77,6 +68,18 @@ func adaptHash32(hasher hash.Hash32) (func ([]byte) (uint32)) {
 		}
 	}
 	return hasherFunc
+}
+
+func (cdb *CDB) initialize (hasher func ([]byte) (uint32)) (*CDB, error) {
+	if hasher == nil {
+		hasher = CDBHashSum32
+	}
+	cdb.hasher = hasher
+	err := cdb.readIndex()
+	if err != nil {
+		return nil, err
+	}
+	return cdb, nil
 }
 
 // Get returns the value for a given key, or nil if it can't be found.
