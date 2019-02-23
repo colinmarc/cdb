@@ -18,6 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func fnvHash(data []byte) uint32 {
+	h := fnv.New32a()
+	h.Write(data)
+	return h.Sum32()
+}
+
 func testWritesReadable(t *testing.T, writer *cdb.Writer) {
 	expected := make([][][]byte, 0, 100)
 	for i := 0; i < cap(expected); i++ {
@@ -57,7 +63,7 @@ func TestWritesReadableFnv(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	writer, err := cdb.NewWriter(f, fnv.New32a())
+	writer, err := cdb.NewWriter(f, fnvHash)
 	require.NoError(t, err)
 	require.NotNil(t, writer)
 
@@ -116,7 +122,7 @@ func TestWritesRandomFnv(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	writer, err := cdb.NewWriter(f, fnv.New32a())
+	writer, err := cdb.NewWriter(f, fnvHash)
 	require.NoError(t, err)
 	require.NotNil(t, writer)
 
@@ -159,7 +165,7 @@ func BenchmarkPutFnv(b *testing.B) {
 		os.Remove(f.Name())
 	}()
 
-	writer, err := cdb.NewWriter(f, fnv.New32a())
+	writer, err := cdb.NewWriter(f, fnvHash)
 	require.NoError(b, err)
 
 	benchmarkPut(b, writer)

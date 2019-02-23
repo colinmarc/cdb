@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
-	"hash"
 	"io"
 	"math"
 	"os"
@@ -18,7 +17,7 @@ var ErrTooMuchData = errors.New("CDB files are limited to 4GB of data")
 // Close or Freeze must be called to finalize the database, or the resulting
 // file will be invalid.
 type Writer struct {
-	hasher       hash.Hash32
+	hash         func([]byte) uint32
 	writer       io.WriteSeeker
 	entries      [256][]entry
 	finalizeOnce sync.Once
@@ -34,7 +33,7 @@ type entry struct {
 }
 
 // Create opens a CDB database at the given path. If the file exists, it will
-// be overwritten.
+// be overwritten. The returned database is not safe for concurrent writes.
 func Create(path string) (*Writer, error) {
 	f, err := os.Create(path)
 	if err != nil {
@@ -46,8 +45,8 @@ func Create(path string) (*Writer, error) {
 
 // NewWriter opens a CDB database for the given io.WriteSeeker.
 //
-// If hasher is nil, it will default to the CDB hash function.
-func NewWriter(writer io.WriteSeeker, hasher hash.Hash32) (*Writer, error) {
+// If hash is nil, it will default to the CDB hash function.
+func NewWriter(writer io.WriteSeeker, hash func([]byte) uint32) (*Writer, error) {
 	// Leave 256 * 8 bytes for the index at the head of the file.
 	_, err := writer.Seek(0, os.SEEK_SET)
 	if err != nil {
@@ -59,12 +58,12 @@ func NewWriter(writer io.WriteSeeker, hasher hash.Hash32) (*Writer, error) {
 		return nil, err
 	}
 
-	if hasher == nil {
-		hasher = newCDBHash()
+	if hash == nil {
+		hash = cdbHash
 	}
 
 	return &Writer{
-		hasher:         hasher,
+		hash:           hash,
 		writer:         writer,
 		bufferedWriter: bufio.NewWriterSize(writer, 65536),
 		bufferedOffset: indexSize,
@@ -80,9 +79,7 @@ func (cdb *Writer) Put(key, value []byte) error {
 	}
 
 	// Record the entry in the hash table, to be written out at the end.
-	cdb.hasher.Reset()
-	cdb.hasher.Write(key)
-	hash := cdb.hasher.Sum32()
+	hash := cdb.hash(key)
 	table := hash & 0xff
 
 	entry := entry{hash: hash, offset: uint32(cdb.bufferedOffset)}
@@ -147,7 +144,7 @@ func (cdb *Writer) Freeze() (*CDB, error) {
 	}
 
 	if readerAt, ok := cdb.writer.(io.ReaderAt); ok {
-		return &CDB{reader: readerAt, index: index, hasher: cdb.hasher}, nil
+		return &CDB{reader: readerAt, index: index, hash: cdb.hash}, nil
 	} else {
 		return nil, os.ErrInvalid
 	}

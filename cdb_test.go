@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"syscall"
 	"testing"
 	"time"
 
@@ -56,7 +55,7 @@ func TestClosesFile(t *testing.T) {
 	require.NoError(t, err)
 
 	err = f.Close()
-	assert.Equal(t, syscall.EINVAL, err)
+	assert.Error(t, err)
 }
 
 func BenchmarkGet(b *testing.B) {

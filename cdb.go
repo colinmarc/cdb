@@ -9,7 +9,6 @@ package cdb
 import (
 	"bytes"
 	"encoding/binary"
-	"hash"
 	"io"
 	"os"
 )
@@ -22,7 +21,7 @@ type index [256]table
 // create a database, use Writer.
 type CDB struct {
 	reader io.ReaderAt
-	hasher hash.Hash32
+	hash   func([]byte) uint32
 	index  index
 }
 
@@ -42,17 +41,18 @@ func Open(path string) (*CDB, error) {
 }
 
 // New opens a new CDB instance for the given io.ReaderAt. It can only be used
-// for reads; to create a database, use Writer.
+// for reads; to create a database, use Writer. The returned CDB instance is
+// thread-safe as long as reader is.
 //
-// If hasher is nil, it will default to the CDB hash function. If a database
+// If hash is nil, it will default to the CDB hash function. If a database
 // was created with a particular hash function, that same hash function must be
 // passed to New, or the database will return incorrect results.
-func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
-	if hasher == nil {
-		hasher = newCDBHash()
+func New(reader io.ReaderAt, hash func([]byte) uint32) (*CDB, error) {
+	if hash == nil {
+		hash = cdbHash
 	}
 
-	cdb := &CDB{reader: reader, hasher: hasher}
+	cdb := &CDB{reader: reader, hash: hash}
 	err := cdb.readIndex()
 	if err != nil {
 		return nil, err
@@ -63,9 +63,7 @@ func New(reader io.ReaderAt, hasher hash.Hash32) (*CDB, error) {
 
 // Get returns the value for a given key, or nil if it can't be found.
 func (cdb *CDB) Get(key []byte) ([]byte, error) {
-	cdb.hasher.Reset()
-	cdb.hasher.Write(key)
-	hash := cdb.hasher.Sum32()
+	hash := cdb.hash(key)
 
 	table := cdb.index[hash&0xff]
 	if table.length == 0 {
